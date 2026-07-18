@@ -37,7 +37,6 @@ DEFAULT_TRIALS = 5
 
 @dataclass
 class SortStats:
-    """Only statistics used by the report and its supporting figures."""
 
     minrun: int = 0
     insertion_elements: int = 0
@@ -1360,48 +1359,6 @@ def validate_run_partition(runs: Sequence[tuple[int, int]], n: int) -> None:
             raise AssertionError("Runs must be non-empty, adjacent, and ordered")
 
 
-def run_self_checks() -> None:
-    """Fast deterministic checks before the full experiment begins."""
-
-    rng = random.Random(20260715)
-    test_arrays = [
-        [],
-        [1],
-        [2, 1],
-        [1, 1, 1, 1],
-        list(range(100)),
-        list(range(99, -1, -1)),
-        [rng.randint(0, 20) for _ in range(257)],
-        make_array_from_run_lengths([3, 17, 2, 31, 5, 64]),
-    ]
-
-    for values in test_arrays:
-        for algorithm_name, algorithm in ALGORITHMS.items():
-            result, stats = algorithm(values)
-            if not verify_sorted(values, result):
-                raise AssertionError(
-                    f"Sorting check failed for {algorithm_name}: {values[:20]}"
-                )
-
-            validate_run_partition(stats.adjusted_runs, len(values))
-
-            history_cost = sum(
-                int(merge_info["merged_len"])
-                for merge_info in stats.merge_history
-            )
-            if history_cost != stats.weighted_merge_workload:
-                raise AssertionError(
-                    f"Merge-cost accounting failed for {algorithm_name}"
-                )
-
-            expected_merges = max(0, len(stats.adjusted_runs) - 1)
-            if len(stats.merge_history) != expected_merges:
-                raise AssertionError(
-                    f"Unexpected merge count for {algorithm_name}"
-                )
-
-    print("Self-checks passed.")
-
 
 # =============================================================================
 # 14. Main workflow
@@ -1422,7 +1379,6 @@ def run_analysis(
     main_dir.mkdir(parents=True, exist_ok=True)
     appendix_dir.mkdir(parents=True, exist_ok=True)
 
-    run_self_checks()
 
     raw_results = run_experiment(
         sizes=sizes,

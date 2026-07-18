@@ -8,3 +8,4 @@ Thumbs.db
 outputs/
 *.log
 .ipynb_checkpoints/
+~$*.docx

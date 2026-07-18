@@ -37,8 +37,7 @@ A positive value means the Powersort-style policy produced a lower merge tree co
 ├── src/
 │   └── run_distribution_analysis.py
 ├── report/
-│   ├── report.md
-│   └── report.docx
+│   └── report.md
 ├── figures/
 │   └── generated report figures
 ├── results/
@@ -121,4 +120,4 @@ Full bibliographic information appears in `report/report.md` and `report/report.
 
 ## Author
 
-Wen-Yu Liao — academic course project, 2026.
+Wen-Yu Liao — personal project, 2026.07
