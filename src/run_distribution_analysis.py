@@ -1228,120 +1228,9 @@ def generate_report_figures(
     )
 
 
-# =============================================================================
-# 12. Merge-tree case studies
-# =============================================================================
-
-
-def export_merge_tree_mermaid(stats: SortStats) -> str:
-    lines = ["graph TD"]
-    created: set[str] = set()
-
-    def node_id(interval: tuple[int, int]) -> str:
-        return f"N{interval[0]}_{interval[1]}"
-
-    def add_node(interval: tuple[int, int]) -> None:
-        identifier = node_id(interval)
-        if identifier not in created:
-            left, right = interval
-            lines.append(
-                f'{identifier}["{left}:{right}<br/>len={right - left}"]'
-            )
-            created.add(identifier)
-
-    for merge_info in stats.merge_history:
-        left = merge_info["left"]
-        right = merge_info["right"]
-        merged = merge_info["merged"]
-
-        assert isinstance(left, tuple)
-        assert isinstance(right, tuple)
-        assert isinstance(merged, tuple)
-
-        add_node(left)
-        add_node(right)
-        add_node(merged)
-        lines.append(f"{node_id(left)} --> {node_id(merged)}")
-        lines.append(f"{node_id(right)} --> {node_id(merged)}")
-
-    return "\n".join(lines)
-
-
-def case_study_arrays() -> dict[str, list[int]]:
-    return {
-        "balanced_runs": make_array_from_run_lengths([64] * 8),
-        "exponential_runs": make_array_from_run_lengths([8, 16, 32, 64, 128, 256]),
-        "many_tiny_runs": make_array_from_run_lengths([2] * 64),
-        "alternating_minrun_large_runs": make_array_from_run_lengths(
-            [64, 256, 64, 256, 64, 256]
-        ),
-        "one_huge_tail_raw_runs": make_array_from_run_lengths(
-            [2] * 32 + [512]
-        ),
-        "one_huge_tail_minrun_aware": make_array_from_run_lengths(
-            [64, 64, 64, 64, 512]
-        ),
-        "near_minrun_boundary": make_array_from_run_lengths(
-            [63, 65, 63, 65, 63, 65]
-        ),
-    }
-
-
-def export_case_studies(case_dir: Path) -> pd.DataFrame:
-    rows: list[dict[str, object]] = []
-
-    for case_name, values in case_study_arrays().items():
-        natural_features = analyze_natural_runs(values)
-        current_dir = case_dir / case_name
-        current_dir.mkdir(parents=True, exist_ok=True)
-
-        for algorithm_name, algorithm in ALGORITHMS.items():
-            result, stats = algorithm(values)
-            if not verify_sorted(values, result):
-                raise AssertionError(
-                    f"Case study failed: {case_name}, {algorithm_name}"
-                )
-
-            adjusted_features = summarize_run_lengths(
-                stats.adjusted_runs, len(values), "adjusted"
-            )
-
-            row = {
-                "case_name": case_name,
-                "algorithm": algorithm_name,
-                "n": len(values),
-                "minrun": stats.minrun,
-                "insertion_ratio": safe_divide(
-                    stats.insertion_elements, len(values)
-                ),
-                "extended_run_count": stats.extended_run_count,
-                "weighted_merge_workload": stats.weighted_merge_workload,
-                "merge_comparisons": stats.merge_comparisons,
-                **natural_features,
-                **adjusted_features,
-            }
-            rows.append(row)
-
-            pd.DataFrame(stats.merge_history).to_csv(
-                current_dir / f"{algorithm_name}_merge_history.csv",
-                index=False,
-                encoding="utf-8-sig",
-            )
-            (current_dir / f"{algorithm_name}_tree.mmd").write_text(
-                export_merge_tree_mermaid(stats), encoding="utf-8"
-            )
-
-    summary = pd.DataFrame(rows)
-    summary.to_csv(
-        case_dir.parent / "case_study_summary.csv",
-        index=False,
-        encoding="utf-8-sig",
-    )
-    return summary
-
 
 # =============================================================================
-# 13. Validation
+# 12. Validation
 # =============================================================================
 
 
@@ -1361,7 +1250,7 @@ def validate_run_partition(runs: Sequence[tuple[int, int]], n: int) -> None:
 
 
 # =============================================================================
-# 14. Main workflow
+# 13. Main workflow
 # =============================================================================
 
 
@@ -1374,7 +1263,6 @@ def run_analysis(
 ) -> None:
     main_dir = output_root / "main_results"
     appendix_dir = output_root / "appendix"
-    case_dir = main_dir / "case_studies"
 
     main_dir.mkdir(parents=True, exist_ok=True)
     appendix_dir.mkdir(parents=True, exist_ok=True)
@@ -1407,7 +1295,6 @@ def run_analysis(
     )
 
     generate_report_figures(summary, profile, correlations, main_dir)
-    export_case_studies(case_dir)
 
     print("\nAnalysis finished successfully.")
     print(f"Main report outputs: {main_dir}")
